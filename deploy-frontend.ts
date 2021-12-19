@@ -1,0 +1,105 @@
+import fs from "fs";            // File system
+import {promisify} from "util"; // Utilities
+import AWS from "aws-sdk";      // Amazon Web Services SDK
+import mime from "mime-types";  // MIME types for ContentType
+import yaml from "js-yaml";     // Parse .yaml files for config info
+const stat: Function = promisify(fs.stat); // Promisify file statistics
+
+type PutObjects = Promise<AWS.S3.PutObjectOutput>;
+interface Config {
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  s3Bucket: string;
+  CloudFrontDistributionId: string;
+}
+
+let config: Config = yaml.safeLoad(fs.readFileSync("config.yml", "utf-8"));
+
+// Configure AWS SDK
+AWS.config.update({
+  region: config.region,
+  accessKeyId: config.accessKeyId,
+  secretAccessKey: config.secretAccessKey
+});
+
+let s3        : AWS.S3         = new AWS.S3({apiVersion: "2006-03-01"});
+let cloudfront: AWS.CloudFront = new AWS.CloudFront({apiVersion: "2019-03-26"});
+
+async function GetFiles(currentPath: string, promises: PutObjects[] = []): Promise<PutObjects[]> {
+  for (let obj of fs.readdirSync(currentPath)) {
+    let localPath: string = `${currentPath}/${obj}`;
+    let stats: fs.Stats = await stat(localPath);
+    let remotePath: string|string[] = localPath.split("/");
+    remotePath.shift();
+    remotePath = remotePath.join("/");
+
+    if (stats.isDirectory()) {
+      promises = await GetFiles(localPath, promises);
+    } else {
+      let yoloSwag: PutObjects = s3.putObject({
+        Bucket: config.s3Bucket,
+        Body: fs.readFileSync(localPath),
+        Key: `${remotePath}`,
+        ContentType: mime.lookup(obj),
+        ACL: "public-read",
+        StorageClass: "STANDARD",
+        ServerSideEncryption: "AES256"
+      }).promise();
+
+      promises.push(yoloSwag);
+    }
+  }
+  return promises;
+}
+
+async function Main(): Promise<void> {
+  let isTruncated: boolean = true;
+  let params: AWS.S3.ListObjectsV2Request = {
+    Bucket: config.s3Bucket,
+    MaxKeys: 1000
+  };
+
+  console.log("Getting files...");
+
+  while (isTruncated) {
+    let data: AWS.S3.ListObjectsV2Output = await s3.listObjectsV2(params).promise();
+    isTruncated = data.IsTruncated;
+
+    let params2: AWS.S3.DeleteObjectsRequest = {
+      Bucket: config.s3Bucket,
+      Delete: {
+        Objects: [],
+        Quiet: false
+      }
+    };
+
+    for (let obj of data.Contents) {
+      params2.Delete.Objects.push({Key: obj.Key});
+    }
+
+    if (params2.Delete.Objects.length) {
+      console.log("Deleting files...");
+      await s3.deleteObjects(params2).promise();
+    }
+  }
+
+  console.log("Uploading files...");
+  let promises: PutObjects[] = await GetFiles("dist");
+  await Promise.all(promises);
+  console.log("...done");
+  console.log("Creating invalidation");
+
+  await cloudfront.createInvalidation({
+    DistributionId: config.CloudFrontDistributionId,
+    InvalidationBatch: {
+      CallerReference: Date.now().toString(),
+      Paths: {
+        Quantity: 1,
+        Items: ["/*"]
+      }
+    }
+  }).promise();
+}
+
+Main();

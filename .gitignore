@@ -1,0 +1,7 @@
+node_modules
+/dist
+/out
+
+config-local.yml
+config-dev.yml
+config-prod.yml
