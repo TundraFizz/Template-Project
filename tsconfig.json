@@ -35,6 +35,7 @@
   ],
   "exclude": [
     "node_modules",
+    "vue.config.js",
     "deploy-backend.ts",
     "deploy-frontend.ts",
     "backend/out/server.js"

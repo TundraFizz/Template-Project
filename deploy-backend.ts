@@ -9,56 +9,56 @@ interface Config {
   privateKey: string;
 }
 
-let config: Config = yaml.safeLoad(fs.readFileSync("config.yml", "utf-8")) as Config;
+const config = yaml.load(fs.readFileSync("config.yml", "utf-8")) as Config;
 
 async function ReadDirectory(path: string): Promise<string[]> {
-  return await new Promise((done: Function) => {
+  return await new Promise((resolve) => {
     fs.readdir(path, (error: Error, items: string[]) => {
       if (error) {
         console.log(error);
         process.exit();
       }
-      done(items);
+      resolve(items);
     });
   });
 }
 
 function Connect(clientConfig: Config): Promise<Client> {
-  return new Promise((done: Function, fail: Function) => {
-    let client: Client = new Client();
+  return new Promise((resolve, reject) => {
+    const client: Client = new Client();
 
     client.on("ready", () => {
-      done(client);
-    }).on("error", fail)
+      resolve(client);
+    }).on("error", reject)
       .connect(clientConfig);
   });
 }
 
 async function UploadFile(sftp: SFTPWrapper, localPath: string, remotePath: string): Promise<void> {
-  await new Promise((done: Function) => {
+  await new Promise((resolve) => {
     sftp.fastPut(localPath, remotePath, (error: Error) => {
       if (error) {
         console.log(error);
         process.exit();
       }
-      done();
+      resolve(null);
     });
   });
 }
 
 function ExecuteCommand(client: Client, command: string): Promise<boolean> {
-  return new Promise((done: Function) => {
+  return new Promise((resolve) => {
     client.exec(command, {pty: true}, (error: Error, stream: ClientChannel) => {
       console.log(command);
 
       if (error) {
         console.log(error);
-        done(false);
+        resolve(false);
       }
 
       stream.on("close", (code: number) => {
-        if (code === 0) done(true);
-        else            done(false);
+        if (code === 0) resolve(true);
+        else            resolve(false);
       }).on("data", (data: Buffer) => {
         console.log(data.toString());
       }).stderr.on("data", (data: Buffer) => {
@@ -69,44 +69,44 @@ function ExecuteCommand(client: Client, command: string): Promise<boolean> {
 }
 
 function CreateSFTP(client: Client): Promise<SFTPWrapper> {
-  return new Promise((done: Function, fail: Function) => {
+  return new Promise((resolve, reject) => {
     client.sftp((error: Error, sftp: SFTPWrapper) => {
       if (error) {
         console.log(error);
-        fail("FAILURE");
+        reject(new Error("FAILURE"));
       }
-      done(sftp);
+      resolve(sftp);
     });
   });
 }
 
 async function Main(): Promise<void> {
-  let clientConfig: Config = {
+  const clientConfig: Config = {
     host: config.host,
     port: config.port,
     username: config.username,
-    privateKey: require("fs").readFileSync(config.privateKey)
+    privateKey: require("fs").readFileSync(config.privateKey) // eslint-disable-line
   };
 
-  let client: Client      = await Connect(clientConfig);
-  let sftp  : SFTPWrapper = await CreateSFTP(client);
-  let files : string[]    = await ReadDirectory("backend/out");
+  const client: Client      = await Connect(clientConfig);
+  const sftp  : SFTPWrapper = await CreateSFTP(client);
+  const files : string[]    = await ReadDirectory("backend/out");
 
-  for (let file of files) {
-    let localPath : string = `backend/out/${file}`;
-    let remotePath: string = `docker/fizz_club/backend/${file}`;
+  for (const file of files) {
+    const localPath  = `backend/out/${file}`;
+    const remotePath = `docker/fizz_club/backend/${file}`;
     await UploadFile(sftp, localPath, remotePath);
     console.log("FILE UPLOADED:", file);
   }
 
-  let commands: string[] = [
+  const commands: string[] = [
     "cd docker",
     "docker build -t fizz_club docker/fizz_club --build-arg MODE=prod",
     "docker container stop $(docker container ls | grep fizz_club | grep -Eo '^[^ ]+')"
   ];
 
-  for (let command of commands) {
-    let result: boolean = await ExecuteCommand(client, command);
+  for (const command of commands) {
+    const result: boolean = await ExecuteCommand(client, command);
 
     if (result === false) {
       console.log("An error occurred, stopping");

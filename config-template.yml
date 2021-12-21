@@ -1,11 +1,7 @@
-VERSION              : "v1.0.0"
-CLIENT_ID_WEB_APP    : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-CLIENT_SECRET_WEB_APP: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-CLIENT_ID            : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-CLIENT_SECRET        : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-REDDIT_USER          : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-REDDIT_PASS          : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-RIOT_API_KEY         : "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-REDIRECT_URI         : "https://example.com"
-PLATFORM             : "platform"
-SCOPE                : "scope1 scope2 scope3"
+ENVIRONMENT: "local" # local | dev | prod
+
+mysql:
+  host:     "localhost"
+  user:     "root"
+  password: ""
+  database: "test"

@@ -8,7 +8,7 @@ import { Database }         from "./db";
 import { Config, DatabaseInfo } from "./interfaces";
 
 // Load configuration and set the single guild that the bot will run for
-const config = yaml.load(fs.readFileSync(`config-${process.env.mode}.yml`, "utf-8")) as Config; // eslint-disable-line
+const config = yaml.load(fs.readFileSync(`config-${process.env.mode}.yml`, "utf-8")) as Config;
 
 // Setup the database
 const dbInfo: DatabaseInfo = {
@@ -24,26 +24,18 @@ const app: Express = express();                   // Create the server
 app.use(bodyParser.json({limit: "10mb"}));        // Setting for bodyParser
 app.use(bodyParser.urlencoded({extended: true})); // Setting for bodyParser
 app.use(cookieParser());                          // Enable cookie parsing
-
-// Default headers
-app.use((req, res, next) => {
-  // res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
-
-// CORS Configuration
-app.use(cors({
+app.use(cors({                                    // CORS Configuration
   origin: [
     "https://tundra.ngrok.io"
-    // "https://championmains.club",
-    // "https://api.championmains.club"
   ],
   methods: ["GET", "POST", "PUT", "OPTIONS", "DELETE"],
   allowedHeaders: [
     "Access-Control-Allow-Origin",
+    "X-Requested-With",
     "Authorization",
-    "Content-Type"
+    "Content-Type",
+    "Accept",
+    "Origin"
   ]
 }));
 

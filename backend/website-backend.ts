@@ -1,11 +1,9 @@
-/* eslint-disable no-unused-vars */
-
 import { app, config, db } from "./server";
 import axios from "axios";
 
 axios.defaults.validateStatus = ():boolean => {return true;};
 
-app.post("/verify-league", async (req, res) => {
+app.post("/testing", async (req, res) => {
   const response = await axios.get("https://api.ipify.org/?format=json");
   const sample2  = await db.SampleSelect();
   const data     = {

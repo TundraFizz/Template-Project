@@ -1,9 +1,9 @@
-import fs from "fs";            // File system
-import {promisify} from "util"; // Utilities
-import AWS from "aws-sdk";      // Amazon Web Services SDK
-import mime from "mime-types";  // MIME types for ContentType
-import yaml from "js-yaml";     // Parse .yaml files for config info
-const stat: Function = promisify(fs.stat); // Promisify file statistics
+import fs from "fs";             // File system
+import {promisify} from "util";  // Utilities
+import AWS from "aws-sdk";       // Amazon Web Services SDK
+import mime from "mime-types";   // MIME types for ContentType
+import yaml from "js-yaml";      // Parse .yaml files for config info
+const stat = promisify(fs.stat); // Promisify file statistics
 
 type PutObjects = Promise<AWS.S3.PutObjectOutput>;
 interface Config {
@@ -14,7 +14,7 @@ interface Config {
   CloudFrontDistributionId: string;
 }
 
-let config: Config = yaml.safeLoad(fs.readFileSync("config.yml", "utf-8"));
+const config = yaml.load(fs.readFileSync("config.yml", "utf-8")) as Config;
 
 // Configure AWS SDK
 AWS.config.update({
@@ -23,13 +23,13 @@ AWS.config.update({
   secretAccessKey: config.secretAccessKey
 });
 
-let s3        : AWS.S3         = new AWS.S3({apiVersion: "2006-03-01"});
-let cloudfront: AWS.CloudFront = new AWS.CloudFront({apiVersion: "2019-03-26"});
+const s3        : AWS.S3         = new AWS.S3({apiVersion: "2006-03-01"});
+const cloudfront: AWS.CloudFront = new AWS.CloudFront({apiVersion: "2019-03-26"});
 
 async function GetFiles(currentPath: string, promises: PutObjects[] = []): Promise<PutObjects[]> {
-  for (let obj of fs.readdirSync(currentPath)) {
-    let localPath: string = `${currentPath}/${obj}`;
-    let stats: fs.Stats = await stat(localPath);
+  for (const obj of fs.readdirSync(currentPath)) {
+    const localPath = `${currentPath}/${obj}`;
+    const stats: fs.Stats = await stat(localPath);
     let remotePath: string|string[] = localPath.split("/");
     remotePath.shift();
     remotePath = remotePath.join("/");
@@ -37,25 +37,25 @@ async function GetFiles(currentPath: string, promises: PutObjects[] = []): Promi
     if (stats.isDirectory()) {
       promises = await GetFiles(localPath, promises);
     } else {
-      let yoloSwag: PutObjects = s3.putObject({
+      const putObject: PutObjects = s3.putObject({
         Bucket: config.s3Bucket,
-        Body: fs.readFileSync(localPath),
         Key: `${remotePath}`,
-        ContentType: mime.lookup(obj),
+        Body: fs.readFileSync(localPath),
+        ContentType: mime.lookup(obj) as string,
         ACL: "public-read",
         StorageClass: "STANDARD",
         ServerSideEncryption: "AES256"
       }).promise();
 
-      promises.push(yoloSwag);
+      promises.push(putObject);
     }
   }
   return promises;
 }
 
 async function Main(): Promise<void> {
-  let isTruncated: boolean = true;
-  let params: AWS.S3.ListObjectsV2Request = {
+  let isTruncated = true;
+  const params: AWS.S3.ListObjectsV2Request = {
     Bucket: config.s3Bucket,
     MaxKeys: 1000
   };
@@ -63,10 +63,10 @@ async function Main(): Promise<void> {
   console.log("Getting files...");
 
   while (isTruncated) {
-    let data: AWS.S3.ListObjectsV2Output = await s3.listObjectsV2(params).promise();
+    const data: AWS.S3.ListObjectsV2Output = await s3.listObjectsV2(params).promise();
     isTruncated = data.IsTruncated;
 
-    let params2: AWS.S3.DeleteObjectsRequest = {
+    const params2: AWS.S3.DeleteObjectsRequest = {
       Bucket: config.s3Bucket,
       Delete: {
         Objects: [],
@@ -74,7 +74,7 @@ async function Main(): Promise<void> {
       }
     };
 
-    for (let obj of data.Contents) {
+    for (const obj of data.Contents) {
       params2.Delete.Objects.push({Key: obj.Key});
     }
 
@@ -85,7 +85,7 @@ async function Main(): Promise<void> {
   }
 
   console.log("Uploading files...");
-  let promises: PutObjects[] = await GetFiles("dist");
+  const promises: PutObjects[] = await GetFiles("dist");
   await Promise.all(promises);
   console.log("...done");
   console.log("Creating invalidation");

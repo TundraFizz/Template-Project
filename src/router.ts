@@ -1,8 +1,6 @@
-/* eslint-disable no-process-env */
-
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import Home from "./views/Home.vue";
-import RedditAuth from "./views/RedditAuth.vue";
+import About from "./views/About.vue";
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -11,9 +9,9 @@ const routes: Array<RouteRecordRaw> = [
     component: Home
   },
   {
-    path: "/reddit-auth",
-    name: "RedditAuth",
-    component: RedditAuth
+    path: "/about",
+    name: "About",
+    component: About
   }
 ];
 

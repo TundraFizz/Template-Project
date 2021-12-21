@@ -1,14 +1,8 @@
-/* eslint-disable brace-style */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable promise/param-names */
-
-import * as mysql  from "mysql2";
-// import axios from "axios";
-// import { config } from "./server";
+import mysql from "mysql2/promise.js";
 import { DatabaseInfo } from "./interfaces";
 
 export class Database {
-  private db: any; // eslint-disable-line
+  private db: mysql.Pool;
 
   constructor(dbInfo: DatabaseInfo) {
     this.db = mysql.createPool({
@@ -17,29 +11,30 @@ export class Database {
       password: dbInfo.password,
       database: dbInfo.database,
       multipleStatements: true
-    }).promise();
+    });
   }
 
-  async Query(sql: string, args?: any): Promise<any> { // eslint-disable-line
-    let [rows]: any = await this.db.query(sql, args); // eslint-disable-line
-    return rows;
+  async Query(sql: string, args?: any): Promise<any[]> { // eslint-disable-line
+    const rows = await this.db.query(sql, args);
+    return [rows];
   }
 
   // ==================== SELECT ====================
-  async SampleSelect(): Promise<string|null> {
-    const results = await this.Query(`SELECT username FROM users`);
-    if (results.length) return results[0].username;
+  async SampleSelect(): Promise<string[]|null> {
+    const [results] = await this.Query(`SELECT * FROM users LIMIT 1`);
+    console.log(results[0]);
+    if (results.length) return results[0];
     else                return null;
   }
 
   // ==================== INSERT ====================
-  async SampleInsert(username: string, secret: string): Promise<void> {
+  async SampleInsert(username: string, password: string): Promise<void> {
     await this.Query(`
-      INSERT INTO users (username, secret)
+      INSERT INTO users (username, password)
       VALUES (?,?)
       ON DUPLICATE KEY UPDATE
-      username=VALUES(username), secret=VALUES(secret)
-    `, [username, secret]);
+      username=VALUES(username), password=VALUES(password)
+    `, [username, password]);
   }
 
   // ==================== UPDATE ====================
